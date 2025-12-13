@@ -203,6 +203,7 @@ static ssize_t kfetch_read(struct file *file,
 	// kernel release
 	sprintf(linebuf, "%s", logo[1]);
 	strcat(kbuf, linebuf);
+	pr_info("1 %d\n", mask_info & KFETCH_RELEASE);
 	if (mask_info & KFETCH_RELEASE)
 	{
 		sprintf(linebuf, "Kernel: %s", uts->release);
@@ -213,7 +214,8 @@ static ssize_t kfetch_read(struct file *file,
 	// CPU model
 	sprintf(linebuf, "%s", logo[2]);
 	strcat(kbuf, linebuf);
-	if (mask_info & KFETCH_RELEASE)
+	pr_info("2 %d\n", mask_info & KFETCH_CPU_MODEL);
+	if (mask_info & KFETCH_CPU_MODEL)
 	{
 		sprintf(linebuf, "CPU:    %s", cpu_model);
 		strcat(kbuf, linebuf);
@@ -223,7 +225,7 @@ static ssize_t kfetch_read(struct file *file,
 	// CPU cores
 	sprintf(linebuf, "%s", logo[3]);
 	strcat(kbuf, linebuf);
-	if (mask_info & KFETCH_RELEASE)
+	if (mask_info & KFETCH_NUM_CPUS)
 	{
 		sprintf(linebuf, "CPUs:   %d / %d", cpus_online, cpus_total);
 		strcat(kbuf, linebuf);
@@ -233,7 +235,7 @@ static ssize_t kfetch_read(struct file *file,
 	// memory
 	sprintf(linebuf, "%s", logo[4]);
 	strcat(kbuf, linebuf);
-	if (mask_info & KFETCH_RELEASE)
+	if (mask_info & KFETCH_MEM)
 	{
 		sprintf(linebuf, "Mem:    %lu / %lu MB", mem_used_mb, mem_total_mb);
 		strcat(kbuf, linebuf);
@@ -243,7 +245,7 @@ static ssize_t kfetch_read(struct file *file,
 	// process count
 	sprintf(linebuf, "%s", logo[5]);
 	strcat(kbuf, linebuf);
-	if (mask_info & KFETCH_RELEASE)
+	if (mask_info & KFETCH_NUM_PROCS)
 	{
 		sprintf(linebuf, "Procs:  %u", num_procs);
 		strcat(kbuf, linebuf);
@@ -253,7 +255,7 @@ static ssize_t kfetch_read(struct file *file,
 	// uptime
 	sprintf(linebuf, "%s", logo[6]);
 	strcat(kbuf, linebuf);
-	if (mask_info & KFETCH_RELEASE)
+	if (mask_info & KFETCH_UPTIME)
 	{
 		sprintf(linebuf, "Uptime: %lu mins", uptime_mins);
 		strcat(kbuf, linebuf);
@@ -289,15 +291,21 @@ static ssize_t kfetch_write(struct file *file,
 	if (buf_size >= BUF_LEN)
 		buf_size = buf_size - 1;
 
-	mask_info = 0;
-	pr_info("mask_info = %u\n", mask_info);
+	// mask_info = 0;
+	// pr_info("mask_info = %u\n", mask_info);
 	if (copy_from_user(kbuf, ubuf, length))
 	{
 
 		pr_alert("/dev/kfetch: write error\n");
 		return -EFAULT;
 	}
-	kstrtouint(kbuf, 10, &mask_info);
+	kbuf[length] = '\0';
+	// pr_info("kbuf %s end\n", kbuf);
+	if (kstrtouint(kbuf, 10, &mask_info))
+	{
+		pr_alert("/dev/kfetch: conversion error\n");
+	}
+
 	pr_info("mask_info = %u\n", mask_info);
 	kbuf[buf_size] = '\0';
 	*offset += buf_size;
