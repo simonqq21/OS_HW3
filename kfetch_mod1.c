@@ -10,15 +10,20 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/printk.h>
-#include <linux/types.h>
+
 #include <linux/proc_fs.h>
 #include <linux/sched.h>
 #include <linux/stat.h>
+#include <linux/sched/stat.h>
 #include <linux/string.h>
+#include <linux/time.h>
+#include <linux/time_namespace.h>
+#include <linux/types.h>
 #include <linux/uaccess.h>
 #include <linux/utsname.h> // kernel release
 #include <linux/version.h>
-#include <linux/types.h>
+
+#include <linux/sched/signal.h> // Required for for_each_process
 
 #include <asm/errno.h>
 
@@ -64,7 +69,7 @@ enum
 /* Is device open? Used to prevent multiple access to device */
 static atomic_t already_open = ATOMIC_INIT(CDEV_NOT_USED);
 /*message buffer*/
-static char kbuf[BUF_LEN + 1];
+static char kbuf[BUF_LEN + 1] = "\0";
 static unsigned int mask_info = KFETCH_FULL_INFO;
 
 static struct class *cls;
@@ -102,7 +107,6 @@ static int __init kfetch_init(void)
 	cls = class_create(THIS_MODULE, DEVICE_NAME);
 #endif
 
-	cls = class_create(DEVICE_NAME);
 	device_create(cls, NULL, MKDEV(major, 0), NULL, DEVICE_NAME);
 	pr_info("Device created on /dev/%s\n", DEVICE_NAME);
 	return 0;
@@ -121,6 +125,58 @@ static int kfetch_open(struct inode *inode, struct file *file)
 {
 	if (atomic_cmpxchg(&already_open, CDEV_NOT_USED, CDEV_EXCLUSIVE_OPEN))
 		return -EBUSY;
+
+	struct sysinfo si;
+	struct new_utsname *uts;
+	si_meminfo(&si);
+
+	unsigned int cpus_online;
+	unsigned int cpus_total;
+	unsigned long mem_total_mb;
+	unsigned long mem_free_mb;
+	unsigned long mem_used_mb;
+	struct task_struct *task;
+	unsigned int num_procs = 0;
+	struct timespec64 uptime;
+	unsigned long uptime_mins;
+	char cpu_model[64];
+
+	// kernel release
+	uts = utsname();
+	pr_info("%s\n", uts->release);
+	// CPU model
+	struct cpuinfo_x86 *c = &boot_cpu_data;
+	if (c->x86_model_id[0])
+	{
+		strcpy(cpu_model, c->x86_model_id);
+	}
+	else
+	{
+		strcpy(cpu_model, "Not available");
+	}
+	pr_info("%s\n", cpu_model);
+	// CPU cores
+	cpus_online = num_online_cpus();
+	cpus_total = num_possible_cpus();
+	pr_info("CPUs: %d / %d\n", cpus_online, cpus_total);
+	// memory
+	mem_total_mb = si.totalram * si.mem_unit / 1024 / 1024;
+	mem_free_mb = si.freeram * si.mem_unit / 1024 / 1024;
+	mem_used_mb = mem_total_mb - mem_free_mb;
+	pr_info("RAM: %lu / %lu\n", mem_used_mb, mem_total_mb);
+	// process count
+	rcu_read_lock(); // Lock to ensure the list doesn't change while we read
+	for_each_process(task)
+	{
+		num_procs++;
+	}
+	rcu_read_unlock(); // Unlock
+	pr_info("processes: %u\n", num_procs);
+	// uptime
+	ktime_get_boottime_ts64(&uptime);
+	timens_add_boottime(&uptime);
+	uptime_mins = uptime.tv_sec / 60;
+	pr_info("uptime: %lu\n", uptime_mins);
 	return 0;
 }
 
@@ -137,12 +193,12 @@ static ssize_t kfetch_read(struct file *file,
 						   loff_t *offset)
 {
 	/* fetching the information */
-	int len = sizeof(kbuf);
+	int len = strlen(kbuf);
 	ssize_t ret = len;
 	pr_info("device_read %d\n", len);
 	if (*offset >= len || copy_to_user(ubuf, kbuf, len))
 	{
-		pr_alert("/dev/kfetch: read error\n");
+		pr_alert("/dev/kfetch: read error or empty kbuf\n");
 		ret = 0;
 	}
 	*offset += len;

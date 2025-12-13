@@ -1,4 +1,5 @@
-obj-m += kfetch_mod_314540035.o 
+# obj-m += kfetch_mod_314540035.o 
+obj-m += kfetch_mod1.o
 
 # You should adjust based on your own directory structure
 PWD := $(CURDIR) 
@@ -20,10 +21,10 @@ clean:
 	$(MAKE) -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean 
 
 load: 
-	-sudo insmod kfetch_mod_314540035.ko 
+	sudo insmod kfetch_mod1.ko 
 
 unload: 
-	sudo rmmod  -f kfetch_mod_314540035 
+	-sudo rmmod -f kfetch_mod1 
 
 reload: unload load 
 
