@@ -127,9 +127,10 @@ static int kfetch_open(struct inode *inode, struct file *file)
 		return -EBUSY;
 
 	struct sysinfo si;
-	struct new_utsname *uts;
+	struct new_utsname *uts = utsname();
 	si_meminfo(&si);
 
+	char hostname[128];
 	unsigned int cpus_online;
 	unsigned int cpus_total;
 	unsigned long mem_total_mb;
@@ -141,8 +142,10 @@ static int kfetch_open(struct inode *inode, struct file *file)
 	unsigned long uptime_mins;
 	char cpu_model[64];
 
+	// hostname
+	pr_info("%s\n", uts->nodename);
 	// kernel release
-	uts = utsname();
+
 	pr_info("%s\n", uts->release);
 	// CPU model
 	struct cpuinfo_x86 *c = &boot_cpu_data;

@@ -43,8 +43,8 @@ __used __section("__versions") = {
 	{ 0x52b15b3b, "__unregister_chrdev" },
 	{ 0xd272d446, "__fentry__" },
 	{ 0xd272d446, "__x86_return_thunk" },
-	{ 0xc7ffe1aa, "si_meminfo" },
 	{ 0x96c07e76, "const_pcpu_hot" },
+	{ 0xc7ffe1aa, "si_meminfo" },
 	{ 0xe8213e80, "_printk" },
 	{ 0xb1ad3f2f, "boot_cpu_data" },
 	{ 0x70eca2ca, "module_layout" },
@@ -77,8 +77,8 @@ __used __section("__version_ext_crcs") = {
 	0x52b15b3b,
 	0xd272d446,
 	0xd272d446,
-	0xc7ffe1aa,
 	0x96c07e76,
+	0xc7ffe1aa,
 	0xe8213e80,
 	0xb1ad3f2f,
 	0x70eca2ca,
@@ -110,8 +110,8 @@ __used __section("__version_ext_names") =
 	"__unregister_chrdev\0"
 	"__fentry__\0"
 	"__x86_return_thunk\0"
-	"si_meminfo\0"
 	"const_pcpu_hot\0"
+	"si_meminfo\0"
 	"_printk\0"
 	"boot_cpu_data\0"
 	"module_layout\0"
@@ -120,4 +120,4 @@ __used __section("__version_ext_names") =
 MODULE_INFO(depends, "");
 
 
-MODULE_INFO(srcversion, "0C2CC8850F2442CA2B938F4");
+MODULE_INFO(srcversion, "783B289DB7E142ECC264C13");
