@@ -2,7 +2,7 @@ obj-m += kfetch_mod_314540035.o
 
 # You should adjust based on your own directory structure
 PWD := $(CURDIR) 
-KDIR ?= linux-v6.8-devkit
+KDIR ?= ../linux-v6.8-devkit
 ARCH ?= riscv
 CROSS_COMPILE ?= riscv64-linux-gnu-
 

@@ -62,8 +62,15 @@ static int kfetch_release(struct inode *, struct file *);
 #define LINE_BUF_LEN 256
 
 static int major;
+enum
+{
+	CDEV_NOT_USED,
+	CDEV_EXCLUSIVE_OPEN,
+};
 /* Is device open? Used to prevent multiple access to device */
+static atomic_t already_open = ATOMIC_INIT(CDEV_NOT_USED);
 static DEFINE_MUTEX(device_mutex);
+static int is_device_open = 0;
 
 /*message buffer*/
 static char kbuf[BUF_LEN + 1] = "\0";
@@ -139,10 +146,20 @@ static void __exit kfetch_exit(void)
 // open operation
 static int kfetch_open(struct inode *inode, struct file *file)
 {
-	if (mutex_lock_interruptible(&device_mutex))
-	{
-		return -ERESTARTSYS;
-	}
+	mutex_lock_interruptible(&device_mutex);
+
+	// if (!mutex_trylock(&device_mutex))
+	// {
+	// 	mutex_lock(&device_mutex);
+	// }
+
+	// is_device_open = 1;
+
+	// mutex_unlock(&device_mutex);
+
+	// if (atomic_cmpxchg(&already_open, CDEV_NOT_USED, CDEV_EXCLUSIVE_OPEN))
+	// 	return -EBUSY;
+
 	return 0;
 }
 
@@ -150,7 +167,14 @@ static int kfetch_open(struct inode *inode, struct file *file)
 static int kfetch_release(struct inode *inode, struct file *file)
 {
 	mutex_unlock(&device_mutex);
+	// if (!mutex_trylock(&device_mutex))
+	// {
+	// 	mutex_lock(&device_mutex);
+	// }
+	// is_device_open = 0;
 
+	// mutex_unlock(&device_mutex);
+	// atomic_set(&already_open, CDEV_NOT_USED);
 	return 0;
 }
 
@@ -163,8 +187,7 @@ static ssize_t kfetch_read(struct file *file,
 	// get info
 	si_meminfo(&si);
 	uts = utsname();
-// CPU model
-#ifdef __x86_64
+	// CPU model
 	struct cpuinfo_x86 *c = &boot_cpu_data;
 	if (c->x86_model_id[0])
 	{
@@ -174,9 +197,6 @@ static ssize_t kfetch_read(struct file *file,
 	{
 		strcpy(cpu_model, "RISC-V Processor");
 	}
-#else
-	strcpy(cpu_model, "RISC-V Processor");
-#endif
 
 	// CPU cores
 	cpus_online = num_online_cpus();
@@ -302,6 +322,19 @@ static ssize_t kfetch_write(struct file *file,
 		pr_alert("/dev/kfetch: write error\n");
 		return -EFAULT;
 	}
+
+	// if (copy_from_user(kbuf, ubuf, length))
+	// {
+
+	// 	pr_alert("/dev/kfetch: write error\n");
+	// 	return -EFAULT;
+	// }
+	// kbuf[length] = '\0';
+	// // pr_info("kbuf %s end\n", kbuf);
+	// if (kstrtouint(kbuf, 10, &mask_info))
+	// {
+	// 	pr_alert("/dev/kfetch: conversion error\n");
+	// }
 
 	if (mask_info < 0)
 		mask_info = 0;

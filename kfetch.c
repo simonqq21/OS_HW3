@@ -12,7 +12,8 @@
 #include "kfetch.h"
 
 #define err_quit(msg)       \
-    do {                    \
+    do                      \
+    {                       \
         perror(msg);        \
         exit(EXIT_FAILURE); \
     } while (0)
@@ -61,18 +62,37 @@ int main(int argc, char *argv[])
     int mask_info;
 
     mask_info = -1;
-    while ((opt = getopt(argc, argv, "acnmpruh")) != -1) {
+    // printf("argv = %s\n", argv[2]);
+    while ((opt = getopt(argc, argv, "acnmpruh")) != -1)
+    {
         if (mask_info < 0)
             mask_info = 0;
-        switch (opt) {
-        case 'a': mask_info = KFETCH_FULL_INFO; break;
-        case 'c': mask_info |= KFETCH_CPU_MODEL; break;
-        case 'm': mask_info |= KFETCH_MEM; break;
-        case 'n': mask_info |= KFETCH_NUM_CPUS; break;
-        case 'p': mask_info |= KFETCH_NUM_PROCS; break;
-        case 'r': mask_info |= KFETCH_RELEASE; break;
-        case 'u': mask_info |= KFETCH_UPTIME; break;
-        case 'h': usage(*argv); exit(EXIT_SUCCESS);
+        switch (opt)
+        {
+        case 'a':
+            mask_info = KFETCH_FULL_INFO;
+            break;
+        case 'c':
+            mask_info |= KFETCH_CPU_MODEL;
+            break;
+        case 'm':
+            mask_info |= KFETCH_MEM;
+            break;
+        case 'n':
+            mask_info |= KFETCH_NUM_CPUS;
+            break;
+        case 'p':
+            mask_info |= KFETCH_NUM_PROCS;
+            break;
+        case 'r':
+            mask_info |= KFETCH_RELEASE;
+            break;
+        case 'u':
+            mask_info |= KFETCH_UPTIME;
+            break;
+        case 'h':
+            usage(*argv);
+            exit(EXIT_SUCCESS);
         case '?':
             fprintf(stderr, "Unknown option: %c\n", optopt);
             usage(*argv);
