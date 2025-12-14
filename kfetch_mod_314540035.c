@@ -9,6 +9,7 @@
 #include <linux/mm.h> // total RAM, free RAM, process count, uptime
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+#include <linux/mutex.h>
 #include <linux/printk.h>
 
 #include <linux/proc_fs.h>
@@ -66,9 +67,11 @@ enum
 	CDEV_NOT_USED,
 	CDEV_EXCLUSIVE_OPEN,
 };
-
 /* Is device open? Used to prevent multiple access to device */
 static atomic_t already_open = ATOMIC_INIT(CDEV_NOT_USED);
+static DEFINE_MUTEX(device_mutex);
+static int is_device_open = 0;
+
 /*message buffer*/
 static char kbuf[BUF_LEN + 1] = "\0";
 static char linebuf[LINE_BUF_LEN];
@@ -95,6 +98,8 @@ unsigned int cpus_total;
 unsigned long mem_total_mb;
 unsigned long mem_free_mb;
 unsigned long mem_used_mb;
+unsigned long mem_available_pages;
+unsigned long mem_available_mb;
 struct task_struct *task;
 unsigned int num_procs = 0;
 struct timespec64 uptime;
@@ -178,10 +183,12 @@ static ssize_t kfetch_read(struct file *file,
 	cpus_online = num_online_cpus();
 	cpus_total = num_possible_cpus();
 	// memory
+	mem_available_pages = si_mem_available();
 	mem_total_mb = si.totalram * si.mem_unit / 1024 / 1024;
-	mem_free_mb = si.freeram * si.mem_unit / 1024 / 1024;
-	mem_used_mb = mem_total_mb - mem_free_mb;
+	mem_available_mb = mem_available_pages * PAGE_SIZE / 1024 / 1024;
+	mem_used_mb = mem_total_mb - mem_available_mb;
 	// process count
+	num_procs = 0;
 	rcu_read_lock(); // Lock to ensure the list doesn't change while we read
 	for_each_process(task)
 	{
@@ -203,7 +210,7 @@ static ssize_t kfetch_read(struct file *file,
 	// kernel release
 	sprintf(linebuf, "%s", logo[1]);
 	strcat(kbuf, linebuf);
-	pr_info("1 %d\n", mask_info & KFETCH_RELEASE);
+	// pr_info("1 %d\n", mask_info & KFETCH_RELEASE);
 	if (mask_info & KFETCH_RELEASE)
 	{
 		sprintf(linebuf, "Kernel: %s", uts->release);
@@ -214,7 +221,7 @@ static ssize_t kfetch_read(struct file *file,
 	// CPU model
 	sprintf(linebuf, "%s", logo[2]);
 	strcat(kbuf, linebuf);
-	pr_info("2 %d\n", mask_info & KFETCH_CPU_MODEL);
+	// pr_info("2 %d\n", mask_info & KFETCH_CPU_MODEL);
 	if (mask_info & KFETCH_CPU_MODEL)
 	{
 		sprintf(linebuf, "CPU:    %s", cpu_model);
@@ -267,7 +274,7 @@ static ssize_t kfetch_read(struct file *file,
 
 	int len = strlen(kbuf);
 	ssize_t ret = len;
-	pr_info("device_read %d\n", len);
+	pr_info("device read length %d\n", len);
 	if (copy_to_user(ubuf, kbuf, len))
 	{
 		pr_alert("/dev/kfetch: read error\n");
@@ -291,20 +298,24 @@ static ssize_t kfetch_write(struct file *file,
 	if (buf_size >= BUF_LEN)
 		buf_size = buf_size - 1;
 
-	// mask_info = 0;
-	// pr_info("mask_info = %u\n", mask_info);
-	if (copy_from_user(kbuf, ubuf, length))
+	if (copy_from_user(&mask_info, ubuf, sizeof(mask_info)))
 	{
-
 		pr_alert("/dev/kfetch: write error\n");
 		return -EFAULT;
 	}
-	kbuf[length] = '\0';
-	// pr_info("kbuf %s end\n", kbuf);
-	if (kstrtouint(kbuf, 10, &mask_info))
-	{
-		pr_alert("/dev/kfetch: conversion error\n");
-	}
+
+	// if (copy_from_user(kbuf, ubuf, length))
+	// {
+
+	// 	pr_alert("/dev/kfetch: write error\n");
+	// 	return -EFAULT;
+	// }
+	// kbuf[length] = '\0';
+	// // pr_info("kbuf %s end\n", kbuf);
+	// if (kstrtouint(kbuf, 10, &mask_info))
+	// {
+	// 	pr_alert("/dev/kfetch: conversion error\n");
+	// }
 
 	pr_info("mask_info = %u\n", mask_info);
 	kbuf[buf_size] = '\0';
